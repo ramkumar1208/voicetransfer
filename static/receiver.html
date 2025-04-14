@@ -1,0 +1,38 @@
+<!-- receiver.html -->
+<input id="peerId" placeholder="Enter sender's ID" />
+<button onclick="start()">Receive Audio</button>
+<audio autoplay id="audio"></audio>
+
+<script>
+let pc = new RTCPeerConnection();
+let remoteStream = new MediaStream();
+document.getElementById("audio").srcObject = remoteStream;
+
+pc.ontrack = (event) => {
+  remoteStream.addTrack(event.track);
+};
+
+async function start() {
+  const peerId = document.getElementById("peerId").value;
+
+  // Get offer from sender
+  const res = await fetch(`http://127.0.0.1:8000/get-offer/${peerId}`);
+  const offer = await res.json();
+  await pc.setRemoteDescription(offer);
+
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+
+  // Send answer to server
+  await fetch(`http://127.0.0.1:8000/send-answer/${peerId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sdp: pc.localDescription.sdp,
+      type: pc.localDescription.type
+    })
+  });
+
+  alert("Connected to sender!");
+}
+</script>
